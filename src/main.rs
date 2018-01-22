@@ -11,6 +11,10 @@ use getopts::{Options, Matches};
 use memmap::Mmap;
 use oxdz::{format, player, FrameInfo};
 
+
+const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
+
+
 fn main() {
 
     let args: Vec<String> = env::args().collect();
@@ -49,6 +53,9 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         Some(val) => val.parse()?,
         None      => 0,
     };
+
+    println!("■ ■   ■   {}", VERSION.unwrap_or(""));
+    println!("    ■  ");
 
     let module = try!(format::load(&mmap[..]));
     println!("Title: {}", module.title);
