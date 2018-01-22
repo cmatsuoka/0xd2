@@ -7,7 +7,7 @@ use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::{stdout, Write};
-use getopts::Options;
+use getopts::{Options, Matches};
 use memmap::Mmap;
 use oxdz::{format, player, FrameInfo};
 
@@ -16,7 +16,8 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
 
-    opts.optflag("h", "help", "display usage information and exit");
+    opts.optflag("h", "help", "Display a summary of the command line options");
+    opts.optopt("s", "start", "Start from the specified order", "num");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -32,21 +33,29 @@ fn main() {
         return;
     }
 
-    match run(&matches.free[0]) {
+    match run(&matches) {
         Ok(_)  => {},
         Err(e) => println!("Error: {}", e),
     }
 }
 
-fn run(name: &String) -> Result<(), Box<Error>> {
+fn run(matches: &Matches) -> Result<(), Box<Error>> {
+    let name = &matches.free[0];
     let file = try!(File::open(name));
     let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
+
+    // Handle option to set start order
+    let start = match matches.opt_str("s") {
+        Some(val) => val.parse()?,
+        None      => 0,
+    };
 
     let module = try!(format::load(&mmap[..]));
     println!("Title: {}", module.title);
 
     println!("Default player for this format: {}", module.player);
     let mut player = player::Player::find_player(&module, module.player)?;
+    player.data.pos = start;
 
     let endpoint = cpal::default_endpoint().expect("Failed to get default endpoint");
     let format = cpal::Format{
@@ -66,7 +75,7 @@ fn run(name: &String) -> Result<(), Box<Error>> {
             cpal::UnknownTypeBuffer::I16(mut buffer) => {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
                 print!("info pos:{:02X} row:{:02X} speed:{:02X} tempo:{:02X}    \r", fi.pos, fi.row, fi.speed, fi.tempo);
-                stdout().flush();
+                let _ = stdout().flush();
             }
 
             _ => { }
