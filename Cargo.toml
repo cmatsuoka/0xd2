@@ -1,0 +1,16 @@
+[package]
+name = "d2"
+version = "0.1.0"
+authors = ["Claudio Matsuoka <cmatsuoka@gmail.com>"]
+
+[[bin]]
+name = "0xd2"
+path = "src/main.rs"
+
+[dependencies]
+#oxdz = { git = "https://github.com/cmatsuoka/oxdz" }
+oxdz = { path = "../oxdz" }
+getopts = "0.2"
+memmap = "0.6"
+cpal = "0.6"
+
