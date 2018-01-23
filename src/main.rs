@@ -62,6 +62,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     println!("Default player for this format: {}", module.player);
     let mut player = player::Player::find_player(&module, module.player)?;
+    player.start();
+
     player.data.pos = start;
 
     let endpoint = cpal::default_endpoint().expect("Failed to get default endpoint");
