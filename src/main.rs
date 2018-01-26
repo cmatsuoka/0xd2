@@ -58,8 +58,9 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!("    ■  ");
 
     let module = try!(format::load(&mmap[..]));
-    println!("Format: {}", module.description);
-    println!("Title : {}", module.title());
+    println!("Format : {}", module.description);
+    println!("Creator: {}", module.creator);
+    println!("Title  : {}", module.title());
 
     println!("Default player for this format: {}", module.player);
     let mut player = player::Player::find_player(&module, module.player)?;
