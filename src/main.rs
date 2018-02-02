@@ -21,6 +21,7 @@ fn main() {
     let mut opts = Options::new();
 
     opts.optflag("h", "help", "Display a summary of the command line options");
+    opts.optflag("P", "players", "List the available players");
     opts.optopt("s", "start", "Start from the specified order", "num");
 
     let matches = match opts.parse(&args[1..]) {
@@ -30,6 +31,15 @@ fn main() {
             return;
         }
     };
+
+    if matches.opt_present("P") {
+        println!("ID     Player                         Formats");
+        println!("------ ------------------------------ -----------------");
+        player::Player::list().iter().for_each(|p|
+            println!("{:6} {:30} {}", p.id, p.name, p.accepts.join(", "))
+        );
+        return;
+    }
 
     if matches.opt_present("h") ||  matches.free.len() < 1 {
         let brief = format!("Usage: {} [options] filename", args[0]);
