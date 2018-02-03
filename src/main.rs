@@ -35,7 +35,7 @@ fn main() {
     if matches.opt_present("P") {
         println!("ID     Player                         Formats");
         println!("------ ------------------------------ -----------------");
-        player::Player::list().iter().for_each(|p|
+        player::list().iter().for_each(|p|
             println!("{:6} {:30} {}", p.id, p.name, p.accepts.join(", "))
         );
         return;
@@ -72,8 +72,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!("Creator: {}", module.creator);
     println!("Title  : {}", module.title());
 
-    println!("Default player for this format: {}", module.player);
-    let mut player = player::Player::find_player(&module, module.player, "")?;
+    println!("Default player for this format: {}", player::list_by_id(module.player)?.info().name);
+    let mut player = player::Player::find(&module, module.player, "")?;
     player.start();
 
     player.data.pos = start;
