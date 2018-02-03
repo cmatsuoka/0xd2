@@ -73,7 +73,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!("Title  : {}", module.title());
 
     println!("Default player for this format: {}", module.player);
-    let mut player = player::Player::find_player(&module, module.player)?;
+    let mut player = player::Player::find_player(&module, module.player, "")?;
     player.start();
 
     player.data.pos = start;
