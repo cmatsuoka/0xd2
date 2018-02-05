@@ -71,8 +71,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!("Format : {}", module.description);
     println!("Creator: {}", module.creator);
     println!("Title  : {}", module.title());
+    println!("Player : {}", player::list_by_id(module.player)?.info().name);
 
-    println!("Default player for this format: {}", player::list_by_id(module.player)?.info().name);
     let mut player = player::Player::find(&module, module.player, "")?;
     player.start();
 
