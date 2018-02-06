@@ -74,9 +74,9 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!("Player : {}", player::list_by_id(module.player)?.info().name);
 
     let mut player = player::Player::find(&module, module.player, "")?;
-    player.start();
-
     player.data.pos = start;
+
+    player.start();
 
     let endpoint = cpal::default_endpoint().expect("Failed to get default endpoint");
     let format = cpal::Format{
