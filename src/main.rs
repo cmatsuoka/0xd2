@@ -67,13 +67,13 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!("■ ■   ■   {}", VERSION.unwrap_or(""));
     println!("    ■  ");
 
-    let module = try!(format::load(&mmap[..]));
+    let mut module = try!(format::load(&mmap[..]));
     println!("Format : {}", module.description);
     println!("Creator: {}", module.creator);
     println!("Title  : {}", module.title());
     println!("Player : {}", player::list_by_id(module.player)?.info().name);
 
-    let mut player = player::Player::find(&module, module.player, "")?;
+    let mut player = player::Player::find(&mut module, module.player, "")?;
     player.data.pos = start;
 
     player.start();
