@@ -21,7 +21,8 @@ fn main() {
     let mut opts = Options::new();
 
     opts.optflag("h", "help", "Display a summary of the command line options");
-    opts.optflag("P", "players", "List the available players");
+    opts.optflag("P", "list-players", "List the available players");
+    opts.optopt("p", "player", "Use this player", "id");
     opts.optopt("s", "start", "Start from the specified order", "num");
 
     let matches = match opts.parse(&args[1..]) {
@@ -58,22 +59,33 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     let file = try!(File::open(name));
     let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
+    println!("■ ■   ■   {}", VERSION.unwrap_or(""));
+    println!("    ■  ");
+
     // Handle option to set start order
     let start = match matches.opt_str("s") {
         Some(val) => val.parse()?,
         None      => 0,
     };
 
-    println!("■ ■   ■   {}", VERSION.unwrap_or(""));
-    println!("    ■  ");
+    // Handle option to specify player
+    let mut player_id = match matches.opt_str("p") {
+        Some(val) => val,
+        None      => "".to_owned(),
+    };
 
-    let mut module = try!(format::load(&mmap[..]));
+    let mut module = try!(format::load(&mmap[..], &player_id));
+
+    if player_id == "" {
+        player_id = module.player.to_owned();
+    }
+
     println!("Format : {}", module.description);
     println!("Creator: {}", module.creator);
     println!("Title  : {}", module.title());
-    println!("Player : {}", player::list_by_id(module.player)?.info().name);
+    println!("Player : {}", player::list_by_id(&player_id)?.info().name);
 
-    let mut player = player::Player::find(&mut module, module.player, "")?;
+    let mut player = player::Player::find(&mut module, &player_id, "")?;
     player.data.pos = start;
 
     player.start();
