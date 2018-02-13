@@ -34,10 +34,10 @@ fn main() {
     };
 
     if matches.opt_present("P") {
-        println!("ID     Player                                   Formats");
-        println!("------ ---------------------------------------- -----------------");
+        println!("ID      Player                                   Formats");
+        println!("------- ---------------------------------------- -----------------");
         player::list().iter().for_each(|p|
-            println!("{:6} {:40} {}", p.id, p.name, p.accepts.join(", "))
+            println!("{:7} {:40} {}", p.id, p.name, p.accepts.join(", "))
         );
         return;
     }
