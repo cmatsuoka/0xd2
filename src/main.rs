@@ -85,6 +85,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!("Title  : {}", module.title());
     println!("Player : {}", player::list_by_id(&player_id)?.info().name);
 
+    module = player::list_by_id(&player_id)?.import(module)?;
+
     let mut player = player::Player::find(&mut module, &player_id, "")?;
     player.data.pos = start;
 
