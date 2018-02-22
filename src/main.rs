@@ -21,6 +21,7 @@ fn main() {
     let mut opts = Options::new();
 
     opts.optflag("h", "help", "Display a summary of the command line options");
+    opts.optflag("L", "list-formats", "List the supported module formats");
     opts.optflag("P", "list-players", "List the available players");
     opts.optopt("p", "player", "Use this player", "id");
     opts.optopt("s", "start", "Start from the specified order", "num");
@@ -32,6 +33,13 @@ fn main() {
             return;
         }
     };
+
+    if matches.opt_present("L") {
+        format::list().iter().enumerate().for_each(|(i,f)|
+            println!("{}:{}", i+1, f.name())
+        );
+        return;
+    }
 
     if matches.opt_present("P") {
         println!("ID      Player                                   Formats");
@@ -117,8 +125,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         }
     });
 
+    //println!();
 
-    println!();
-
-    Ok(())
+    //Ok(())
 }
