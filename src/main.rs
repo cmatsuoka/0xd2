@@ -9,7 +9,7 @@ use std::fs::File;
 use std::io::{stdout, Write};
 use getopts::{Options, Matches};
 use memmap::Mmap;
-use oxdz::{format, player, FrameInfo};
+use oxdz::{Oxdz, FrameInfo, format, player};
 
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
@@ -77,29 +77,25 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     };
 
     // Handle option to specify player
-    let mut player_id = match matches.opt_str("p") {
+    let player_id = match matches.opt_str("p") {
         Some(val) => val,
         None      => "".to_owned(),
     };
 
-    let mut module = try!(format::load(&mmap[..], &player_id));
+    // Load the module and optionally set the player we want
+    let mut oxdz = Oxdz::new(&mmap[..], &player_id)?;
 
-    if player_id == "" {
-        player_id = module.player.to_owned();
-    }
+    println!("Format : {}", oxdz.module.description);
+    println!("Creator: {}", oxdz.module.creator);
+    println!("Title  : {}", oxdz.module.title());
+    println!("Player : {}", oxdz.player_info()?.name);
 
-    println!("Format : {}", module.description);
-    println!("Creator: {}", module.creator);
-    println!("Title  : {}", module.title());
-    println!("Player : {}", player::list_by_id(&player_id)?.info().name);
-
-    module = player::list_by_id(&player_id)?.import(module)?;
-
-    let mut player = player::Player::find(&mut module, &player_id, "")?;
+    let mut player = oxdz.player()?;
     player.data.pos = start;
 
     player.start();
 
+    // Set up our audio output
     let endpoint = cpal::default_endpoint().expect("Failed to get default endpoint");
     let format = cpal::Format{
         channels    : vec![cpal::ChannelPosition::FrontLeft, cpal::ChannelPosition::FrontRight],
