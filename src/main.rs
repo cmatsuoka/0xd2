@@ -21,6 +21,7 @@ fn main() {
     let mut opts = Options::new();
 
     opts.optflag("h", "help", "Display a summary of the command line options");
+    opts.optopt("i", "interpolator", "Select interpolation type", "{nearest|linear|spline}");
     opts.optflag("L", "list-formats", "List the supported module formats");
     opts.optopt("M", "mute", "Mute channels or ranges of channels", "list");
     opts.optflag("P", "list-players", "List the available players");
@@ -107,8 +108,13 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         None      => {},
     }
 
-
     player.start();
+
+    // Select interpolator (must be after player start)
+    match matches.opt_str("i") {
+        Some(val) => player.set_interpolator(&val)?,
+        None      => {},
+    }
 
     // Set up our audio output
     let endpoint = cpal::default_endpoint().expect("Failed to get default endpoint");
