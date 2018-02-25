@@ -22,8 +22,10 @@ fn main() {
 
     opts.optflag("h", "help", "Display a summary of the command line options");
     opts.optflag("L", "list-formats", "List the supported module formats");
+    opts.optopt("M", "mute", "Mute channels or ranges of channels", "list");
     opts.optflag("P", "list-players", "List the available players");
     opts.optopt("p", "player", "Use this player", "id");
+    opts.optopt("S", "solo", "Solo channels or ranges of channels", "list");
     opts.optopt("s", "start", "Start from the specified order", "num");
 
     let matches = match opts.parse(&args[1..]) {
@@ -93,6 +95,19 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     let mut player = oxdz.player()?;
     player.data.pos = start;
 
+    // Mute channels
+    match matches.opt_str("M") {
+        Some(val) => set_mute(&val, &mut player, true)?,
+        None      => {},
+    }
+
+    // Solo channels
+    match matches.opt_str("S") {
+        Some(val) => set_mute(&val, &mut player, false)?,
+        None      => {},
+    }
+
+
     player.start();
 
     // Set up our audio output
@@ -124,4 +139,25 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     //println!();
 
     //Ok(())
+}
+
+fn set_mute(list: &str, player: &mut player::Player, val: bool) -> Result<(), Box<Error>> {
+    player.set_mute_all(!val);
+    for range in list.split(",") {
+        if range.contains("-") {
+            let num = range.split("-").collect::<Vec<&str>>();
+            if num.len() != 2 {
+                //return Err(std::error::Error)
+            }
+            let start = num[0].parse::<usize>()?;
+            let end   = num[1].parse::<usize>()?;
+            for i in start..end+1 {
+                player.set_mute(i, val);
+            }
+        } else {
+            let num = range.parse::<usize>()?;
+            player.set_mute(num, val);
+        }
+    }
+    Ok(())
 }
