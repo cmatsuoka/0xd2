@@ -2,6 +2,8 @@ extern crate memmap;
 extern crate oxdz;
 extern crate cpal;
 extern crate getopts;
+extern crate termios;
+extern crate libc;
 
 use std::env;
 use std::error::Error;
@@ -11,8 +13,30 @@ use getopts::{Options, Matches};
 use memmap::Mmap;
 use oxdz::{Oxdz, FrameInfo, format, player};
 
+mod terminal;
+
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
+
+
+// https://stackoverflow.com/questions/29963449/golang-like-defer-in-rust
+struct ScopeCall<F: FnOnce()> {
+    c: Option<F>
+}
+impl<F: FnOnce()> Drop for ScopeCall<F> {
+    fn drop(&mut self) {
+        self.c.take().unwrap()()
+    }
+}
+
+macro_rules! expr { ($e: expr) => { $e } } // tt hack
+macro_rules! defer {
+    ($($data: tt)*) => (
+        let _scope_call = ScopeCall {
+            c: Some(|| -> () { expr!({ $($data)* }) })
+        };
+    )
+}
 
 
 fn main() {
@@ -130,6 +154,10 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     let mut fi = FrameInfo::new();
 
+    let tty = terminal::Terminal::new()?;
+    tty.set();
+    defer!{ tty.reset() }
+
     event_loop.run(move |_, buffer| {
         match buffer {
             cpal::UnknownTypeBuffer::I16(mut buffer) => {
@@ -167,3 +195,4 @@ fn set_mute(list: &str, player: &mut player::Player, val: bool) -> Result<(), Bo
     }
     Ok(())
 }
+
