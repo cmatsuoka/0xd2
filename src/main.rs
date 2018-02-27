@@ -227,10 +227,15 @@ impl Command {
         self.check_pause();
     }
 
-    pub fn check_pause(&self) {
+    pub fn check_pause(&mut self) {
         if self.pause {
-            // TODO: do our pause processing here
-            std::thread::sleep(time::Duration::from_millis(1000));
+            while self.pause {
+                std::thread::sleep(time::Duration::from_millis(100));
+                match terminal::read_key() {
+                    Some(c) => self.process(c),
+                    None    => (),
+                }
+            }
         }
     }
 }
