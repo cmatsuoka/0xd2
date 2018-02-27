@@ -95,8 +95,12 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     let file = try!(File::open(name));
     let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
-    println!("■ ■   ■   {}", VERSION.unwrap_or(""));
-    println!("    ■  ");
+    println!(r#"  ___          _ ____  "#); 
+    println!(r#" / _ \__  ____| |___ \ "#);
+    println!(r#"| | | \ \/ / _` | __) |"#);
+    println!(r#"| |_| |>  < (_| |/ __/ "#);
+    println!(r#" \___//_/\_\__,_|_____|  {}"#, VERSION.unwrap_or(""));
+
 
     // Handle option to set start order
     let start = match matches.opt_str("s") {
