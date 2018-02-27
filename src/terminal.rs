@@ -42,9 +42,24 @@ impl Terminal {
             }
         }
     }
+
 }
 
 #[cfg(unix)]
 pub fn isatty(fd: libc::c_int) -> bool {
     unsafe { return libc::isatty(fd) != 0 }
+}
+
+pub fn read_key() -> Option<char> {
+    if !cfg!(unix) {
+        return None
+    }
+
+    let mut b: [char; 1] = ['\0'];
+    let ret = unsafe { libc::read(0, b.as_mut_ptr() as *mut libc::c_void, 1) };
+    if ret == 1 {
+        Some(b[0])
+    } else {
+        None
+    }
 }

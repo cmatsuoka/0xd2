@@ -6,6 +6,7 @@ extern crate termios;
 extern crate libc;
 
 use std::env;
+use std::time;
 use std::error::Error;
 use std::fs::File;
 use std::io::{stdout, Write};
@@ -158,10 +159,18 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     tty.set();
     defer!{ tty.reset() }
 
+    let mut cmd = Command::new();
+
     event_loop.run(move |_, buffer| {
         match buffer {
             cpal::UnknownTypeBuffer::I16(mut buffer) => {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
+
+                match terminal::read_key() {
+                    Some(c) => cmd.process(c),
+                    None    => (),
+                }
+
                 print!("info pos:{:02X} row:{:02X} speed:{:02X} tempo:{:02X}    \r", fi.pos, fi.row, fi.speed, fi.tempo);
                 let _ = stdout().flush();
             }
@@ -196,3 +205,32 @@ fn set_mute(list: &str, player: &mut player::Player, val: bool) -> Result<(), Bo
     Ok(())
 }
 
+
+struct Command {
+     pause: bool,
+
+}
+
+impl Command {
+    pub fn new() -> Self {
+         Command{
+             pause: false,
+         }
+    }
+
+    pub fn process(&mut self, c: char) {
+        match c {
+            ' ' => self.pause = !self.pause,
+            _   => (),
+        }
+
+        self.check_pause();
+    }
+
+    pub fn check_pause(&self) {
+        if self.pause {
+            // TODO: do our pause processing here
+            std::thread::sleep(time::Duration::from_millis(1000));
+        }
+    }
+}
