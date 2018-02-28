@@ -117,10 +117,11 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     // Load the module and optionally set the player we want
     let mut oxdz = Oxdz::new(&mmap[..], &player_id)?;
 
-    println!("Format : {}", oxdz.module.description);
-    println!("Creator: {}", oxdz.module.creator);
-    println!("Title  : {}", oxdz.module.title());
-    println!("Player : {}", oxdz.player_info()?.name);
+    println!("Format  : {}", oxdz.module.description);
+    println!("Creator : {}", oxdz.module.creator);
+    println!("Channels: {}", oxdz.module.channels);
+    println!("Title   : {}", oxdz.module.title());
+    println!("Player  : {}", oxdz.player_info()?.name);
 
     let mut player = oxdz.player()?;
     player.data.pos = start;
