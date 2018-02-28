@@ -12,7 +12,7 @@ use std::fs::File;
 use std::io::{stdout, Write};
 use getopts::{Options, Matches};
 use memmap::Mmap;
-use oxdz::{Oxdz, FrameInfo, format, player};
+use oxdz::{Oxdz, Module, FrameInfo, format, player};
 
 mod terminal;
 
@@ -171,12 +171,11 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
 
                 match terminal::read_key() {
-                    Some(c) => cmd.process(c),
+                    Some(c) => cmd.process(c, &fi, player.module()),
                     None    => (),
                 }
 
-                print!("info pos:{:02X} row:{:02X} speed:{:02X} tempo:{:02X}    \r", fi.pos, fi.row, fi.speed, fi.tempo);
-                let _ = stdout().flush();
+		show_info(&fi, player.module(), false);
             }
 
             _ => { }
@@ -186,6 +185,12 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     //println!();
 
     //Ok(())
+}
+
+fn show_info(fi: &FrameInfo, module: &Module, paused: bool) {
+    print!("pos:{:02X}/{:02X} row:{:02X} speed:{:02X} tempo:{:02X}  {} \r", fi.pos, module.len()-1,
+           fi.row, fi.speed, fi.tempo, if paused { "[PAUSE]" } else { "       " } );
+    let _ = stdout().flush();
 }
 
 fn set_mute(list: &str, player: &mut player::Player, val: bool) -> Result<(), Box<Error>> {
@@ -222,21 +227,21 @@ impl Command {
          }
     }
 
-    pub fn process(&mut self, c: char) {
+    pub fn process(&mut self, c: char, fi: &FrameInfo, module: &Module) {
         match c {
-            ' ' => self.pause = !self.pause,
+            ' ' => { self.pause = !self.pause; show_info(fi, module, self.pause) },
             _   => (),
         }
 
-        self.check_pause();
+        self.check_pause(fi, module);
     }
 
-    pub fn check_pause(&mut self) {
+    pub fn check_pause(&mut self, fi: &FrameInfo, module: &Module) {
         if self.pause {
             while self.pause {
                 std::thread::sleep(time::Duration::from_millis(100));
                 match terminal::read_key() {
-                    Some(c) => self.process(c),
+                    Some(c) => self.process(c, fi, module),
                     None    => (),
                 }
             }
