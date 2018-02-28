@@ -14,6 +14,6 @@ path = "src/main.rs"
 oxdz = { path = "../oxdz" }
 getopts = "0.2"
 memmap = "0.6"
-cpal = "0.6"
+cpal = "0.8"
 termios = "0.3"
 libc = "0.2"

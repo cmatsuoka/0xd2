@@ -101,6 +101,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!(r#"| |_| |>  < (_| |/ __/ "#);
     println!(r#" \___//_/\_\__,_|_____|  {}"#, VERSION.unwrap_or(""));
 
+    // FIXME: set this to the device native sampling rate
+    let rate = 48000_u32;
 
     // Handle option to set start order
     let start = match matches.opt_str("s") {
@@ -115,7 +117,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     };
 
     // Load the module and optionally set the player we want
-    let mut oxdz = Oxdz::new(&mmap[..], &player_id)?;
+    let mut oxdz = Oxdz::new(&mmap[..], rate, &player_id)?;
 
     println!("Format  : {}", oxdz.module.description);
     println!("Creator : {}", oxdz.module.creator);
@@ -147,16 +149,16 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     }
 
     // Set up our audio output
-    let endpoint = cpal::default_endpoint().expect("Failed to get default endpoint");
+    let device = cpal::default_output_device().expect("Failed to get default output device");
     let format = cpal::Format{
-        channels    : vec![cpal::ChannelPosition::FrontLeft, cpal::ChannelPosition::FrontRight],
-        samples_rate: cpal::SamplesRate(44100),
-        data_type   : cpal::SampleFormat::I16,
+        channels   : 2,
+        sample_rate: cpal::SampleRate(rate),
+        data_type  : cpal::SampleFormat::I16,
     };
 
     let event_loop = cpal::EventLoop::new();
-    let voice_id = event_loop.build_voice(&endpoint, &format).unwrap();
-    event_loop.play(voice_id);
+    let stream_id = event_loop.build_output_stream(&device, &format).unwrap();
+    event_loop.play_stream(stream_id);
 
     let mut fi = FrameInfo::new();
 
@@ -166,9 +168,9 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     let mut cmd = Command::new();
 
-    event_loop.run(move |_, buffer| {
-        match buffer {
-            cpal::UnknownTypeBuffer::I16(mut buffer) => {
+    event_loop.run(move |_, data| {
+        match data {
+            cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
 
                 match terminal::read_key() {
