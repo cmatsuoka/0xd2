@@ -2,6 +2,8 @@
 name = "d2"
 version = "0.1.0"
 authors = ["Claudio Matsuoka <cmatsuoka@gmail.com>"]
+exclude = ["*.png"]
+publish = false
 
 [[bin]]
 name = "0xd2"
