@@ -101,6 +101,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!(r#"| |_| |>  < (_| |/ __/ "#);
     println!(r#" \___//_/\_\__,_|_____|  {}"#, VERSION.unwrap_or(""));
 
+
     // FIXME: set this to the device native sampling rate
     let rate = 48000_u32;
 
@@ -232,8 +233,15 @@ impl Command {
 
     pub fn process(&mut self, c: char, fi: &FrameInfo, module: &Module) {
         match c {
-            ' ' => { self.pause = !self.pause; show_info(fi, module, self.pause) },
-            _   => (),
+            ' '    => { self.pause = !self.pause; show_info(fi, module, self.pause) },
+            'q'    => { println!(); std::process::exit(0) },
+            '\x1b' => {
+                match terminal::read_key() {
+                    Some(_) => (), // handle arrows, etc
+                    None    => { println!(); std::process::exit(0) },
+                }
+            },
+            _      => (),
         }
 
         self.check_pause(fi, module);
