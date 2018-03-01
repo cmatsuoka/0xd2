@@ -6,7 +6,6 @@ extern crate termios;
 extern crate libc;
 
 use std::env;
-use std::time;
 use std::error::Error;
 use std::fs::File;
 use std::io::{stdout, Write};
@@ -15,7 +14,7 @@ use memmap::Mmap;
 use oxdz::{Oxdz, Module, FrameInfo, format, player};
 
 mod terminal;
-
+mod command;
 
 const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
@@ -181,7 +180,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     tty.set();
     defer!{ tty.reset() }
 
-    let mut cmd = Command::new();
+    let mut cmd = command::Command::new();
 
     event_loop.run(move |_, data| {
         match data {
@@ -193,7 +192,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
                     None    => (),
                 }
 
-		show_info(&fi, player.module(), false);
+                show_info(&fi, player.module(), false);
             }
 
             _ => { }
@@ -205,7 +204,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     //Ok(())
 }
 
-fn show_info(fi: &FrameInfo, module: &Module, paused: bool) {
+pub fn show_info(fi: &FrameInfo, module: &Module, paused: bool) {
     print!("pos:{:02X}/{:02X} row:{:02X} speed:{:02X} tempo:{:02X}  {} \r", fi.pos, module.len()-1,
            fi.row, fi.speed, fi.tempo, if paused { "[PAUSE]" } else { "       " } );
     let _ = stdout().flush();
@@ -232,44 +231,3 @@ fn set_mute(list: &str, player: &mut player::Player, val: bool) -> Result<(), Bo
     Ok(())
 }
 
-
-struct Command {
-     pause: bool,
-
-}
-
-impl Command {
-    pub fn new() -> Self {
-         Command{
-             pause: false,
-         }
-    }
-
-    pub fn process(&mut self, c: char, fi: &FrameInfo, module: &Module) {
-        match c {
-            ' '    => { self.pause = !self.pause; show_info(fi, module, self.pause) },
-            'q'    => { println!(); std::process::exit(0) },
-            '\x1b' => {
-                match terminal::read_key() {
-                    Some(_) => (), // handle arrows, etc
-                    None    => { println!(); std::process::exit(0) },
-                }
-            },
-            _      => (),
-        }
-
-        self.check_pause(fi, module);
-    }
-
-    pub fn check_pause(&mut self, fi: &FrameInfo, module: &Module) {
-        if self.pause {
-            while self.pause {
-                std::thread::sleep(time::Duration::from_millis(100));
-                match terminal::read_key() {
-                    Some(c) => self.process(c, fi, module),
-                    None    => (),
-                }
-            }
-        }
-    }
-}
