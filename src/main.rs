@@ -205,8 +205,10 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 }
 
 pub fn show_info(fi: &FrameInfo, module: &Module, paused: bool) {
-    print!("pos:{:02X}/{:02X} row:{:02X} speed:{:02X} tempo:{:02X}  {} \r", fi.pos, module.len()-1,
-           fi.row, fi.speed, fi.tempo, if paused { "[PAUSE]" } else { "       " } );
+    let pat = module.pattern_in_position(fi.pos).unwrap_or(0);
+    let rows = module.rows(pat) - 1;
+    print!("pos:{:02X}/{:02X} pat:{:02X}/{:02X} row:{:02X}/{:02X} speed:{:02X} tempo:{:02X}  {} \r", fi.pos, module.len()-1,
+           pat, module.patterns(), fi.row, rows, fi.speed, fi.tempo, if paused { "[PAUSE]" } else { "       " } );
     let _ = stdout().flush();
 }
 
