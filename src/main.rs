@@ -47,10 +47,11 @@ fn main() {
 
     opts.optflag("h", "help", "Display a summary of the command line options");
     opts.optopt("i", "interpolator", "Select interpolation type", "{nearest|linear|spline}");
-    opts.optflag("L", "list-formats", "List the supported module formats");
+    opts.optflag("L", "list-formats", "List supported module formats");
     opts.optopt("M", "mute", "Mute channels or ranges of channels", "list");
-    opts.optflag("P", "list-players", "List the available players");
+    opts.optflag("P", "list-players", "List available players");
     opts.optopt("p", "player", "Use this player", "id");
+    opts.optopt("r", "rate", "Set the sampling rate in hertz", "freq");
     opts.optopt("S", "solo", "Solo channels or ranges of channels", "list");
     opts.optopt("s", "start", "Start from the specified order", "num");
 
@@ -102,8 +103,23 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!(r#" \___//_/\_\__,_|_____|  {}"#, VERSION.unwrap_or(""));
 
 
-    // FIXME: set this to the device native sampling rate
-    let rate = 48000_u32;
+    // Set up our audio output
+    let device = cpal::default_output_device().expect("Failed to get default output device");
+
+    // Choose sampling rate from parameter, or get system default
+    let rate = match matches.opt_str("r") {
+        Some(val) => val.parse()?,
+        None      => {
+            if let Ok(fmt) = device.default_output_format() {
+                let cpal::SampleRate(sample_rate) = fmt.sample_rate;
+                sample_rate
+            } else {
+                44100
+            }
+        }
+    };
+
+    println!("Sampling rate : {}Hz", rate);
 
     // Handle option to set start order
     let start = match matches.opt_str("s") {
@@ -149,16 +165,14 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         None      => {},
     }
 
-    // Set up our audio output
-    let device = cpal::default_output_device().expect("Failed to get default output device");
+    // Create event loop
     let format = cpal::Format{
         channels   : 2,
         sample_rate: cpal::SampleRate(rate),
         data_type  : cpal::SampleFormat::I16,
     };
-
     let event_loop = cpal::EventLoop::new();
-    let stream_id = event_loop.build_output_stream(&device, &format).unwrap();
+    let stream_id = event_loop.build_output_stream(&device, &format)?;
     event_loop.play_stream(stream_id);
 
     let mut fi = FrameInfo::new();
