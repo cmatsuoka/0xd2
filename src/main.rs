@@ -122,7 +122,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     // Handle option to set start order
     let start = match matches.opt_str("s") {
-        Some(val) => val.parse()?,
+        Some(val) => parse_num(&val)?,
         None      => 0,
     };
 
@@ -233,3 +233,10 @@ fn set_mute(list: &str, player: &mut player::Player, val: bool) -> Result<(), Bo
     Ok(())
 }
 
+fn parse_num(s: &str) -> Result<usize, std::num::ParseIntError> {
+    if s.starts_with("0x") {
+        usize::from_str_radix(&s[2..], 16)
+    } else {
+        s.parse()
+    }
+}
