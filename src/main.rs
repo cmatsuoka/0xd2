@@ -9,6 +9,7 @@ use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::{stdout, Write};
+use std::process;
 use getopts::{Options, Matches};
 use memmap::Mmap;
 use oxdz::{Oxdz, Module, FrameInfo, format, player};
@@ -186,6 +187,11 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         match data {
             cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
+
+                if fi.loop_count > 0 {
+                    println!();
+                    process::exit(0);
+                }
 
                 match terminal::read_key() {
                     Some(c) => cmd.process(c, &fi, player.module()),
