@@ -183,6 +183,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     let mut cmd = command::Command::new();
 
+    let mut old_row = 9999;
     event_loop.run(move |_, data| {
         match data {
             cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
@@ -198,7 +199,10 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
                     None    => (),
                 }
 
-                show_info(&fi, player.module(), false);
+                if fi.row != old_row {
+                    show_info(&fi, player.module(), false);
+                    old_row = fi.row;
+                }
             }
 
             _ => { }
