@@ -145,6 +145,10 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     let mut player = oxdz.player()?;
     player.data.pos = start;
 
+    // Must be after module scan (called in oxdz::player())
+    println!("Duration: {}min{:02}s", (player.total_time + 500) / 60000,
+                                     ((player.total_time + 500) / 1000) % 60);
+
     // Mute channels
     match matches.opt_str("M") {
         Some(val) => set_mute(&val, &mut player, true)?,
