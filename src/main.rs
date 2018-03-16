@@ -187,13 +187,12 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     let mut cmd = command::Command::new();
 
-    let mut total_time = 0.0_f32;
     let mut old_row = 9999;
     event_loop.run(move |_, data| {
         match data {
             cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
-                total_time += fi.frame_time / 100.0;
+		let total_time = fi.time / 1000.0;
 
                 if fi.loop_count > 0 {
                     println!();
@@ -225,9 +224,9 @@ pub fn show_info(fi: &FrameInfo, time: f32, module: &Module, paused: bool) {
     let rows = module.rows(pat) - 1;
     let t = time as u32;
     
-    print!("pos:{:02X}/{:02X} pat:{:02X}/{:02X} row:{:02X}/{:02X} speed:{:02X} tempo:{:02X}  {}:{:02}:{:02}.{}  {} \r",
+    print!("pos:{:02X}/{:02X} pat:{:02X}/{:02X} row:{:02X}/{:02X} speed:{:02X} tempo:{:02X}  {}:{:02}:{:02}  {} \r",
            fi.pos, module.len()-1, pat, module.patterns()-1, fi.row, rows, fi.speed, fi.tempo,
-           t / (60 * 600), (t / 600) % 60, (t / 10) % 60, t % 10,
+           t / (60 * 60), (t / 60) % 60, t % 60,
            if paused { "[PAUSE]" } else { "       " } );
     let _ = stdout().flush();
 }
