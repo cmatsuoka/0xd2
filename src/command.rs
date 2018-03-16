@@ -17,9 +17,9 @@ impl Command {
          }
     }
 
-    pub fn process(&mut self, c: char, fi: &FrameInfo, module: &Module) {
+    pub fn process(&mut self, c: char, fi: &FrameInfo, time: f32, module: &Module) {
         match c {
-            ' '    => { self.pause = !self.pause; ::show_info(fi, module, self.pause) },
+            ' '    => { self.pause = !self.pause; ::show_info(fi, time, module, self.pause) },
             'q'    => { println!(); process::exit(0) },
             '\x1b' => {
                 match terminal::read_key() {
@@ -30,15 +30,15 @@ impl Command {
             _      => (),
         }
 
-        self.check_pause(fi, module);
+        self.check_pause(fi, time, module);
     }
 
-    pub fn check_pause(&mut self, fi: &FrameInfo, module: &Module) {
+    pub fn check_pause(&mut self, fi: &FrameInfo, time: f32, module: &Module) {
         if self.pause {
             while self.pause {
                 thread::sleep(time::Duration::from_millis(100));
                 match terminal::read_key() {
-                    Some(c) => self.process(c, fi, module),
+                    Some(c) => self.process(c, fi, time, module),
                     None    => (),
                 }
             }
