@@ -193,7 +193,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         match data {
             cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
-                total_time += fi.frame_time;
+                total_time += fi.frame_time / 100.0;
 
                 if fi.loop_count > 0 {
                     println!();
@@ -223,10 +223,11 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 pub fn show_info(fi: &FrameInfo, time: f32, module: &Module, paused: bool) {
     let pat = module.pattern_in_position(fi.pos).unwrap_or(0);
     let rows = module.rows(pat) - 1;
+    let t = time as u32;
     
-    print!("pos:{:02X}/{:02X} pat:{:02X}/{:02X} row:{:02X}/{:02X} speed:{:02X} tempo:{:02X}  {}:{}:{}.{}  {} \r",
+    print!("pos:{:02X}/{:02X} pat:{:02X}/{:02X} row:{:02X}/{:02X} speed:{:02X} tempo:{:02X}  {}:{:02}:{:02}.{}  {} \r",
            fi.pos, module.len()-1, pat, module.patterns()-1, fi.row, rows, fi.speed, fi.tempo,
-           (time / (60.0 * 600.0)) as u32, ((time / 600.0) % 60.0) as u32, ((time / 10.0) % 60.0) as u32, (time % 10.0) as u32,
+           t / (60 * 600), (t / 600) % 60, (t / 10) % 60, t % 10,
            if paused { "[PAUSE]" } else { "       " } );
     let _ = stdout().flush();
 }
