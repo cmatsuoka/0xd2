@@ -8,6 +8,7 @@ use terminal;
 
 pub enum Key {
     Forward,
+    Backward,
 }
 
 pub struct Command {
@@ -32,6 +33,7 @@ impl Command {
                         match terminal::read_key() {
                             Some(c) => match c {
                                 'C' => return Some(Key::Forward),
+                                'D' => return Some(Key::Backward),
                                 _   => (),
                             }
                             None    => (),

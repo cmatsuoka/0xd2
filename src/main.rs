@@ -206,7 +206,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
                 match cmd {
                     Some(c) => match c {
-                        command::Key::Forward => { player.set_position(fi.pos + 1); },
+                        command::Key::Forward  => { player.set_position(fi.pos + 1); },
+                        command::Key::Backward => { player.set_position(if fi.pos > 0 { fi.pos - 1 } else { 0 }); },
                     },
                     None    => (),
                 }
