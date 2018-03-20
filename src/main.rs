@@ -192,20 +192,27 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         match data {
             cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
                 player.info(&mut fi).fill_buffer(&mut buffer, 0);
-		let total_time = fi.time / 1000.0;
+                let current_time = fi.time / 1000.0;
 
                 if fi.loop_count > 0 {
                     println!();
                     process::exit(0);
                 }
 
-                match terminal::read_key() {
-                    Some(c) => cmd.process(c, &fi, total_time, player.module()),
+                let cmd = match terminal::read_key() {
+                    Some(c) => cmd.process(c, &fi, current_time, player.module()),
+                    None    => None,
+                };
+
+                match cmd {
+                    Some(c) => match c {
+                        command::Key::Forward => { player.set_position(fi.pos + 1); },
+                    },
                     None    => (),
                 }
 
                 if fi.row != old_row {
-                    show_info(&fi, total_time, player.module(), false);
+                    show_info(&fi, current_time, player.module(), false);
                     old_row = fi.row;
                 }
             }
