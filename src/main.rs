@@ -228,14 +228,10 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 }
 
 pub fn show_info(fi: &FrameInfo, time: f32, module: &Module, paused: bool) {
-    let pat = module.pattern_in_position(fi.pos).unwrap_or(0);
-    let rows = module.rows(pat) - 1;
     let t = time as u32;
-    
     print!("pos:{:02X}/{:02X} pat:{:02X}/{:02X} row:{:02X}/{:02X} speed:{:02X} tempo:{:02X}  {}:{:02}:{:02}  {} \r",
-           fi.pos, module.len()-1, pat, module.patterns()-1, fi.row, rows, fi.speed, fi.tempo,
-           t / (60 * 60), (t / 60) % 60, t % 60,
-           if paused { "[PAUSE]" } else { "       " } );
+           fi.pos, module.len()-1, fi.pattern.unwrap_or(0), module.patterns()-1, fi.row, fi.num_rows, fi.speed,
+           fi.tempo, t / (60 * 60), (t / 60) % 60, t % 60, if paused { "[PAUSE]" } else { "       " } );
     let _ = stdout().flush();
 }
 
