@@ -10,6 +10,9 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{stdout, Write};
 use std::process;
+use std::thread;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use getopts::{Options, Matches};
 use memmap::Mmap;
 use oxdz::{Oxdz, Module, FrameInfo, format, player};
@@ -37,6 +40,19 @@ macro_rules! defer {
             c: Some(|| -> () { expr!({ $($data)* }) })
         };
     )
+}
+
+#[macro_export]
+macro_rules! try_thread {
+    ( $a: expr ) => {
+        match $a {
+            Ok(val) => val,
+            Err(e)  => {
+                eprintln!("Error: {}", e);
+                return false;
+            }
+        }
+    }
 }
 
 
@@ -92,9 +108,6 @@ fn main() {
 }
 
 fn run(matches: &Matches) -> Result<(), Box<Error>> {
-    let name = &matches.free[0];
-    let file = try!(File::open(name));
-    let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
     println!(r#"  ___          _ ____  "#); 
     println!(r#" / _ \__  ____| |___ \ "#);
@@ -133,42 +146,6 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         None      => "".to_owned(),
     };
 
-    // Load the module and optionally set the player we want
-    let mut oxdz = Oxdz::new(&mmap[..], rate, &player_id)?;
-
-    println!("Format  : {}", oxdz.module.description);
-    println!("Creator : {}", oxdz.module.creator);
-    println!("Channels: {}", oxdz.module.channels);
-    println!("Title   : {}", oxdz.module.title());
-    println!("Player  : {}", oxdz.player_info()?.name);
-
-    let mut player = oxdz.player()?;
-    player.data.pos = start;
-
-    // Must be after module scan (called in oxdz::player())
-    println!("Duration: {}min{:02}s", (player.total_time + 500) / 60000,
-                                     ((player.total_time + 500) / 1000) % 60);
-
-    // Mute channels
-    match matches.opt_str("M") {
-        Some(val) => set_mute(&val, &mut player, true)?,
-        None      => {},
-    }
-
-    // Solo channels
-    match matches.opt_str("S") {
-        Some(val) => set_mute(&val, &mut player, false)?,
-        None      => {},
-    }
-
-    player.start();
-
-    // Select interpolator (must be after player start)
-    match matches.opt_str("i") {
-        Some(val) => player.set_interpolator(&val)?,
-        None      => {},
-    }
-
     // Create event loop
     let format = cpal::Format{
         channels   : 2,
@@ -179,7 +156,85 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     let stream_id = event_loop.build_output_stream(&device, &format)?;
     event_loop.play_stream(stream_id);
 
-    let mut fi = FrameInfo::new();
+    let info = Arc::new(Mutex::new(FrameInfo::new()));
+
+
+    {
+        let matches = matches.clone();
+        let info = info.clone();
+        let mut old_row = 9999;
+
+        thread::spawn(move || {
+            let name = &matches.free[0];
+            let file = try_thread!(File::open(name));
+            let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
+
+            // Load the module and optionally set the player we want
+            let mut oxdz = try_thread!(Oxdz::new(&mmap[..], rate, &player_id));
+        
+            println!("Format  : {}", oxdz.module.description);
+            println!("Creator : {}", oxdz.module.creator);
+            println!("Channels: {}", oxdz.module.channels);
+            println!("Title   : {}", oxdz.module.title());
+            println!("Player  : {}", try_thread!(oxdz.player_info()).name);
+        
+            let mut player = try_thread!(oxdz.player());
+
+            player.data.pos = start;
+        
+            // Must be after module scan (called in oxdz::player())
+            println!("Duration: {}min{:02}s", (player.total_time + 500) / 60000,
+                                             ((player.total_time + 500) / 1000) % 60);
+        
+            // Mute channels
+            match matches.opt_str("M") {
+                Some(val) => try_thread!(set_mute(&val, &mut player, true)),
+                None      => {},
+            }
+        
+            // Solo channels
+            match matches.opt_str("S") {
+                Some(val) => try_thread!(set_mute(&val, &mut player, false)),
+                None      => {},
+            }
+        
+            player.start();
+        
+            // Select interpolator (must be after player start)
+            match matches.opt_str("i") {
+                Some(val) => try_thread!(player.set_interpolator(&val)),
+                None      => {},
+            }
+        
+
+            event_loop.run(move |_, data| {
+                match data {
+                    cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
+                        {
+                            let mut fi = info.lock().unwrap();
+                            player.info(&mut fi);
+
+                            let current_time = fi.time / 1000.0;
+                            show_info(&fi, current_time, player.module(), false);
+
+                            if fi.loop_count > 0 {
+                                println!();
+				return;
+                            }
+        
+                            if fi.row != old_row {
+                                old_row = fi.row;
+                            }
+                        }
+
+                        player.fill_buffer(&mut buffer, 0);
+                    }
+        
+                    _ => { }
+                }
+            });
+        });
+    }
 
     let tty = terminal::Terminal::new()?;
     tty.set();
@@ -187,44 +242,31 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     let mut cmd = command::Command::new();
 
-    let mut old_row = 9999;
-    event_loop.run(move |_, data| {
-        match data {
-            cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
-                player.info(&mut fi).fill_buffer(&mut buffer, 0);
-                let current_time = fi.time / 1000.0;
-
-                if fi.loop_count > 0 {
-                    println!();
-                    process::exit(0);
-                }
-
-                let cmd = match terminal::read_key() {
-                    Some(c) => cmd.process(c, &fi, current_time, player.module()),
-                    None    => None,
-                };
-
-                match cmd {
-                    Some(c) => match c {
-                        command::Key::Forward  => { player.set_position(fi.pos + 1); },
-                        command::Key::Backward => { player.set_position(if fi.pos > 0 { fi.pos - 1 } else { 0 }); },
-                    },
-                    None    => (),
-                }
-
-                if fi.row != old_row {
-                    show_info(&fi, current_time, player.module(), false);
-                    old_row = fi.row;
-                }
-            }
-
-            _ => { }
+    loop {
+        {
+            let fi = info.lock().unwrap();
+            /*let cmd = match terminal::read_key() {
+                Some(c) => cmd.process(c, &fi, current_time, player.module()),
+                None    => None,
+            };*/
         }
-    });
 
-    //println!();
+/*
+        let cmd = match terminal::read_key();
+        match cmd {
+            Some(c) => match c {
+                command::Key::Forward  => { player.set_position(fi.pos + 1); },
+                command::Key::Backward => { player.set_position(if fi.pos > 0 { fi.pos - 1 } else { 0 }); },
+            },
+            None    => (),
+        }
+*/
 
-    //Ok(())
+        thread::sleep(Duration::from_millis(50));
+    }
+    println!();
+
+    Ok(())
 }
 
 pub fn show_info(fi: &FrameInfo, time: f32, module: &Module, paused: bool) {
