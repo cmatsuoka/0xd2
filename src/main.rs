@@ -241,7 +241,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
                             if fi.loop_count > 0 {
                                 println!();
-                                return;
+                                process::exit(0);
                             }
                         }
 
@@ -274,9 +274,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
         };
     }
-    println!();
 
-    Ok(())
+    //Ok(())
 }
 
 pub fn show_info(fi: &FrameInfo, time: f32, module: &Module, paused: bool) {
