@@ -11,7 +11,7 @@ use std::fs::File;
 use std::io::{stdout, Write};
 use std::process;
 use std::thread;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
 use getopts::{Options, Matches};
 use memmap::Mmap;
@@ -157,7 +157,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     event_loop.play_stream(stream_id);
 
     let info = Arc::new(Mutex::new(FrameInfo::new()));
-
+    let (tx, rx) = mpsc::channel();
 
     {
         let matches = matches.clone();
@@ -170,7 +170,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
             let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
             // Load the module and optionally set the player we want
-            let mut oxdz = try_thread!(Oxdz::new(&mmap[..], rate, &player_id));
+            let oxdz = try_thread!(Oxdz::new(&mmap[..], rate, &player_id));
         
             println!("Format  : {}", oxdz.module.description);
             println!("Creator : {}", oxdz.module.creator);
@@ -179,7 +179,6 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
             println!("Player  : {}", try_thread!(oxdz.player_info()).name);
         
             let mut player = try_thread!(oxdz.player());
-
             player.data.pos = start;
         
             // Must be after module scan (called in oxdz::player())
@@ -206,6 +205,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
                 None      => {},
             }
         
+            let mut pause = false;
+            let mut old_pause = false;
 
             event_loop.run(move |_, data| {
                 match data {
@@ -214,16 +215,36 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
                             let mut fi = info.lock().unwrap();
                             player.info(&mut fi);
 
-                            let current_time = fi.time / 1000.0;
-                            show_info(&fi, current_time, player.module(), false);
+                            if old_row != fi.row || pause != old_pause {
+                                show_info(&fi, fi.time / 1000.0, player.module(), pause);
+                                old_row = fi.row;
+                                old_pause = pause;
+                            }
+
+                            while pause {
+                                match rx.recv() {
+                                    Ok(cmd) => match cmd {
+                                        command::Key::Pause => { pause = !pause },
+                                        command::Key::Exit  => { println!(); process::exit(0) },
+                                        _ => (),
+                                    },
+                                    Err(_)  => (),
+                                }
+                            }
+
+                            match rx.try_recv() {
+                                Ok(cmd) => match cmd {
+                                    command::Key::Pause    => { pause = !pause },
+                                    command::Key::Exit     => { println!(); process::exit(0) },
+                                    command::Key::Forward  => { player.set_position(fi.pos + 1); },
+                                    command::Key::Backward => { player.set_position(if fi.pos > 0 { fi.pos - 1 } else { 0 }); },
+                                },
+                                Err(_)  => (),
+                            }
 
                             if fi.loop_count > 0 {
                                 println!();
-				return;
-                            }
-        
-                            if fi.row != old_row {
-                                old_row = fi.row;
+                                return;
                             }
                         }
 
@@ -244,25 +265,19 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     loop {
         {
-            let fi = info.lock().unwrap();
-            /*let cmd = match terminal::read_key() {
-                Some(c) => cmd.process(c, &fi, current_time, player.module()),
+            let cmd = match terminal::read_key() {
+                Some(c) => cmd.process(c),
                 None    => None,
-            };*/
-        }
+            };
 
-/*
-        let cmd = match terminal::read_key();
-        match cmd {
-            Some(c) => match c {
-                command::Key::Forward  => { player.set_position(fi.pos + 1); },
-                command::Key::Backward => { player.set_position(if fi.pos > 0 { fi.pos - 1 } else { 0 }); },
-            },
-            None    => (),
-        }
-*/
+            match cmd {
+                Some(c) => tx.send(c).unwrap(),
+                None    => (),
+            }
 
-        thread::sleep(Duration::from_millis(50));
+        };
+
+        thread::sleep(Duration::from_millis(100));
     }
     println!();
 
