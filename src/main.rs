@@ -276,8 +276,6 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
             }
 
         };
-
-        thread::sleep(Duration::from_millis(100));
     }
     println!();
 

@@ -21,7 +21,7 @@ impl Terminal {
     
             let mut t = self.term.clone();
             t.c_lflag &= !(ECHO | ICANON | TOSTOP);
-            t.c_cc[VMIN] = 0;
+            t.c_cc[VMIN] = 1;  // blocking read
             t.c_cc[VTIME] = 0;
             match tcsetattr(0, TCSAFLUSH, &t) {
                 Ok(_)  => (),
