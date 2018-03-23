@@ -42,7 +42,7 @@ macro_rules! defer {
 }
 
 #[macro_export]
-macro_rules! try_thread {
+macro_rules! try_ {
     ( $a: expr ) => {
         match $a {
             Ok(val) => val,
@@ -163,19 +163,19 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
         thread::spawn(move || {
             let name = &matches.free[0];
-            let file = try_thread!(File::open(name));
+            let file = try_!(File::open(name));
             let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
             // Load the module and optionally set the player we want
-            let oxdz = try_thread!(Oxdz::new(&mmap[..], rate, &player_id));
+            let oxdz = try_!(Oxdz::new(&mmap[..], rate, &player_id));
         
             println!("Format  : {}", oxdz.module.description);
             println!("Creator : {}", oxdz.module.creator);
             println!("Channels: {}", oxdz.module.channels);
             println!("Title   : {}", oxdz.module.title());
-            println!("Player  : {}", try_thread!(oxdz.player_info()).name);
+            println!("Player  : {}", try_!(oxdz.player_info()).name);
         
-            let mut player = try_thread!(oxdz.player());
+            let mut player = try_!(oxdz.player());
             player.data.pos = start;
         
             // Must be after module scan (called in oxdz::player())
@@ -184,13 +184,13 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         
             // Mute channels
             match matches.opt_str("M") {
-                Some(val) => try_thread!(set_mute(&val, &mut player, true)),
+                Some(val) => try_!(set_mute(&val, &mut player, true)),
                 None      => {},
             }
         
             // Solo channels
             match matches.opt_str("S") {
-                Some(val) => try_thread!(set_mute(&val, &mut player, false)),
+                Some(val) => try_!(set_mute(&val, &mut player, false)),
                 None      => {},
             }
         
@@ -198,7 +198,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         
             // Select interpolator (must be after player start)
             match matches.opt_str("i") {
-                Some(val) => try_thread!(player.set_interpolator(&val)),
+                Some(val) => try_!(player.set_interpolator(&val)),
                 None      => {},
             }
         
