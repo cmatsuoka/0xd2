@@ -11,8 +11,7 @@ use std::fs::File;
 use std::io::{stdout, Write};
 use std::process;
 use std::thread;
-use std::sync::{Arc, Mutex, mpsc};
-use std::time::Duration;
+use std::sync::mpsc;
 use getopts::{Options, Matches};
 use memmap::Mmap;
 use oxdz::{Oxdz, Module, FrameInfo, format, player};
@@ -156,12 +155,10 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     let stream_id = event_loop.build_output_stream(&device, &format)?;
     event_loop.play_stream(stream_id);
 
-    let info = Arc::new(Mutex::new(FrameInfo::new()));
     let (tx, rx) = mpsc::channel();
 
     {
         let matches = matches.clone();
-        let info = info.clone();
         let mut old_row = 9999;
 
         thread::spawn(move || {
@@ -207,12 +204,12 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         
             let mut pause = false;
             let mut old_pause = false;
+            let mut fi = FrameInfo::new();
 
             event_loop.run(move |_, data| {
                 match data {
                     cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
                         {
-                            let mut fi = info.lock().unwrap();
                             player.info(&mut fi);
 
                             if old_row != fi.row || pause != old_pause {
