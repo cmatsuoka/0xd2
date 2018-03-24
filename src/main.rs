@@ -105,6 +105,89 @@ fn main() {
     }
 }
 
+
+struct ModPlayer<'a> {
+    oxdz: oxdz::Oxdz<'a>,
+    fi: oxdz::FrameInfo,
+    pause: bool,
+    old_pause: bool,
+    old_row: usize,
+    rx: mpsc::Receiver<command::Key>,
+}
+
+impl<'a> ModPlayer<'a> {
+    pub fn new(name: &str, rate: u32, player_id: &str, rx: mpsc::Receiver<command::Key>, matches: &Matches) -> Result<Self, Box<Error>> {
+
+        let mut oxdz = load_module(name, rate, player_id)?;
+
+        // Mute channels
+        match matches.opt_str("M") {
+            Some(val) => set_mute(&val, &mut oxdz, true)?,
+            None      => {},
+        }
+
+        // Solo channels
+        match matches.opt_str("S") {
+            Some(val) => set_mute(&val, &mut oxdz, false)?,
+            None      => {},
+        }
+
+        match matches.opt_str("i") {
+            Some(val) => { oxdz.set_interpolator(&val)?; },
+            None      => {},
+        };
+
+        Ok(ModPlayer{
+            oxdz,
+            fi: oxdz::FrameInfo::new(),
+            pause: false,
+            old_pause: false,
+            old_row: 9999,
+            rx,
+        })
+    }
+
+    pub fn fill_buffer(&mut self, mut buffer: &mut [i16]) {
+        {
+            self.oxdz.frame_info(&mut self.fi);
+
+            if self.old_row != self.fi.row || self.pause != self.old_pause {
+                show_info(&self.fi, self.fi.time / 1000.0, self.oxdz.module(), self.pause);
+                self.old_row = self.fi.row;
+                self.old_pause = self.pause;
+            }
+
+            while self.pause {
+                match self.rx.recv() {
+                    Ok(cmd) => match cmd {
+                        command::Key::Pause => { self.pause = !self.pause },
+                        command::Key::Exit  => { println!(); process::exit(0) },
+                        _ => (),
+                    },
+                    Err(_)  => (),
+                }
+            }
+
+            match self.rx.try_recv() {
+                Ok(cmd) => match cmd {
+                    command::Key::Pause    => { self.pause = !self.pause },
+                    command::Key::Exit     => { println!(); process::exit(0) },
+                    command::Key::Forward  => { self.oxdz.set_position(self.fi.pos + 1); },
+                    command::Key::Backward => { self.oxdz.set_position(if self.fi.pos > 0 { self.fi.pos - 1 } else { 0 }); },
+                },
+                Err(_)  => (),
+            }
+
+            if self.fi.loop_count > 0 {
+                println!();
+                process::exit(0);
+            }
+        }
+
+        self.oxdz.fill_buffer(&mut buffer, 0);
+    }
+}
+
 fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     println!(r#"  ___          _ ____  "#); 
@@ -112,7 +195,6 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     println!(r#"| | | \ \/ / _` | __) |"#);
     println!(r#"| |_| |>  < (_| |/ __/ "#);
     println!(r#" \___//_/\_\__,_|_____|  {}"#, VERSION.unwrap_or(""));
-
 
     // Set up our audio output
     let device = cpal::default_output_device().expect("Failed to get default output device");
@@ -158,92 +240,26 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
 
     {
         let matches = matches.clone();
-        let mut old_row = 9999;
 
         thread::spawn(move || {
             let name = &matches.free[0];
-            let file = try_!(File::open(name));
-            let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
-            // Load the module and optionally set the player we want
-            let mut oxdz = try_!(oxdz::Oxdz::new(&mmap[..], rate, &player_id));
-        
-            let mut mi = oxdz::ModuleInfo::new();
-            oxdz.module_info(&mut mi);
-            println!("Format  : {}", mi.description);
-            println!("Creator : {}", mi.creator);
-            println!("Channels: {}", mi.channels);
-            println!("Title   : {}", mi.title);
-            println!("Player  : {}", try_!(oxdz.player_info()).name);
-        
-            oxdz.set_position(start);
-        
-            println!("Duration: {}min{:02}s", (mi.total_time + 500) / 60000,
-                                             ((mi.total_time + 500) / 1000) % 60);
-        
-            // Mute channels
-            match matches.opt_str("M") {
-                Some(val) => try_!(set_mute(&val, &mut oxdz, true)),
-                None      => {},
-            }
-        
-            // Solo channels
-            match matches.opt_str("S") {
-                Some(val) => try_!(set_mute(&val, &mut oxdz, false)),
-                None      => {},
-            }
-        
-            match matches.opt_str("i") {
-                Some(val) => { try_!(oxdz.set_interpolator(&val)); },
-                None      => {},
+            let mut mod_player = match ModPlayer::new(name, rate, &player_id, rx, &matches) {
+                Ok(val) => val,
+                Err(e)  => {
+                    eprintln!("Error: {}", e);
+                    process::exit(1);
+                },
             };
-        
-            let mut pause = false;
-            let mut old_pause = false;
-            let mut fi = oxdz::FrameInfo::new();
+
+            mod_player.oxdz.set_position(start);
 
             event_loop.run(move |_, data| {
                 match data {
                     cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
-                        {
-                            oxdz.frame_info(&mut fi);
-
-                            if old_row != fi.row || pause != old_pause {
-                                show_info(&fi, fi.time / 1000.0, oxdz.module(), pause);
-                                old_row = fi.row;
-                                old_pause = pause;
-                            }
-
-                            while pause {
-                                match rx.recv() {
-                                    Ok(cmd) => match cmd {
-                                        command::Key::Pause => { pause = !pause },
-                                        command::Key::Exit  => { println!(); process::exit(0) },
-                                        _ => (),
-                                    },
-                                    Err(_)  => (),
-                                }
-                            }
-
-                            match rx.try_recv() {
-                                Ok(cmd) => match cmd {
-                                    command::Key::Pause    => { pause = !pause },
-                                    command::Key::Exit     => { println!(); process::exit(0) },
-                                    command::Key::Forward  => { oxdz.set_position(fi.pos + 1); },
-                                    command::Key::Backward => { oxdz.set_position(if fi.pos > 0 { fi.pos - 1 } else { 0 }); },
-                                },
-                                Err(_)  => (),
-                            }
-
-                            if fi.loop_count > 0 {
-                                println!();
-                                process::exit(0);
-                            }
-                        }
-
-                        oxdz.fill_buffer(&mut buffer, 0);
+                        mod_player.fill_buffer(&mut buffer)
                     }
-        
+
                     _ => { }
                 }
             });
@@ -274,7 +290,27 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     //Ok(())
 }
 
-pub fn show_info(fi: &oxdz::FrameInfo, time: f32, module: &oxdz::Module, paused: bool) {
+fn load_module<'a>(name: &str, rate: u32, player_id: &str) -> Result<oxdz::Oxdz<'a>, Box<Error>> {
+    let file = File::open(name)?;
+    let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
+
+    // Load the module and optionally set the player we want
+    let mut oxdz = oxdz::Oxdz::new(&mmap[..], rate, &player_id)?;
+
+    let mut mi = oxdz::ModuleInfo::new();
+    oxdz.module_info(&mut mi);
+    println!("Format  : {}", mi.description);
+    println!("Creator : {}", mi.creator);
+    println!("Channels: {}", mi.channels);
+    println!("Title   : {}", mi.title);
+    println!("Player  : {}", oxdz.player_info()?.name);
+
+    println!("Duration: {}min{:02}s", (mi.total_time + 500) / 60000,
+                                     ((mi.total_time + 500) / 1000) % 60);
+    Ok(oxdz)
+}
+
+fn show_info(fi: &oxdz::FrameInfo, time: f32, module: &oxdz::Module, paused: bool) {
     let t = time as u32;
     print!("pos:{:02X}/{:02X} pat:{:02X}/{:02X} row:{:02X}/{:02X} speed:{:02X} tempo:{:02X}  {}:{:02}:{:02}  {} \r",
            fi.pos, module.len()-1, fi.pattern.unwrap_or(0), module.patterns()-1, fi.row, fi.num_rows, fi.speed,
