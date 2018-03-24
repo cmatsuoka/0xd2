@@ -194,8 +194,8 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
             }
         
             match matches.opt_str("i") {
-                Some(val) => try_!(oxdz.set_interpolator(&val)),
-                None      => &mut oxdz,  // to match arm type
+                Some(val) => { try_!(oxdz.set_interpolator(&val)); },
+                None      => {},
             };
         
             let mut pause = false;
