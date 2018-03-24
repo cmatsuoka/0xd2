@@ -1,6 +1,6 @@
 [package]
 name = "d2"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Claudio Matsuoka <cmatsuoka@gmail.com>"]
 exclude = ["*.png"]
 publish = false
