@@ -113,12 +113,17 @@ struct ModPlayer<'a> {
     old_pause: bool,
     old_row: usize,
     rx: mpsc::Receiver<command::Key>,
+    rate: u32,
+    player_id: String,
+    load_next: bool,
+    name_list: &'a Vec<String>,
+    index: usize,
 }
 
 impl<'a> ModPlayer<'a> {
-    pub fn new(name: &str, rate: u32, player_id: &str, rx: mpsc::Receiver<command::Key>, matches: &Matches) -> Result<Self, Box<Error>> {
+    pub fn new(name_list: &'a Vec<String>, rate: u32, player_id: &str, rx: mpsc::Receiver<command::Key>, matches: &Matches) -> Result<Self, Box<Error>> {
 
-        let mut oxdz = load_module(name, rate, player_id)?;
+        let mut oxdz = load_module(name_list, 0, rate, player_id)?;
 
         // Mute channels
         match matches.opt_str("M") {
@@ -144,7 +149,20 @@ impl<'a> ModPlayer<'a> {
             old_pause: false,
             old_row: 9999,
             rx,
+            rate,
+            player_id: player_id.to_owned(),
+            load_next: false,
+            name_list,
+            index: 1,
         })
+    }
+
+    pub fn load(&mut self) -> Result<(), Box<Error>> {
+        println!();
+        self.oxdz = load_module(self.name_list, self.index, self.rate, &self.player_id)?;
+        self.load_next = false;
+        self.index += 1;
+        Ok(())
     }
 
     pub fn fill_buffer(&mut self, mut buffer: &mut [i16]) {
@@ -179,8 +197,7 @@ impl<'a> ModPlayer<'a> {
             }
 
             if self.fi.loop_count > 0 {
-                println!();
-                process::exit(0);
+                self.load_next = true;
             }
         }
 
@@ -242,9 +259,9 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
         let matches = matches.clone();
 
         thread::spawn(move || {
-            let name = &matches.free[0];
+            let name_list = &matches.free;
 
-            let mut mod_player = match ModPlayer::new(name, rate, &player_id, rx, &matches) {
+            let mut mod_player = match ModPlayer::new(name_list, rate, &player_id, rx, &matches) {
                 Ok(val) => val,
                 Err(e)  => {
                     eprintln!("Error: {}", e);
@@ -257,7 +274,14 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
             event_loop.run(move |_, data| {
                 match data {
                     cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
-                        mod_player.fill_buffer(&mut buffer)
+                        mod_player.fill_buffer(&mut buffer);
+                        if mod_player.load_next {
+                            println!();
+                            match mod_player.load() {
+                                Ok(_)  => {},
+                                Err(e) => println!("error: {}", e),
+                            }
+                        }
                     }
 
                     _ => { }
@@ -290,7 +314,13 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
     //Ok(())
 }
 
-fn load_module<'a>(name: &str, rate: u32, player_id: &str) -> Result<oxdz::Oxdz<'a>, Box<Error>> {
+fn load_module<'a>(name_list: &Vec<String>, index: usize, rate: u32, player_id: &str) -> Result<oxdz::Oxdz<'a>, Box<Error>> {
+    if index >= name_list.len() {
+        process::exit(0);  // no more modules to play
+    }
+    let name = &name_list[index];
+
+    println!("Loading {}...", name);
     let file = File::open(name)?;
     let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
