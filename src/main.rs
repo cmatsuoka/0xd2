@@ -62,7 +62,7 @@ fn main() {
     };
 
     if matches.opt_present("L") {
-        oxdz::format::list().iter().enumerate().for_each(|(i,f)|
+        oxdz::format_list().iter().enumerate().for_each(|(i,f)|
             println!("{}:{}", i+1, f.name())
         );
         return;
@@ -71,7 +71,7 @@ fn main() {
     if matches.opt_present("P") {
         println!("ID      Player                                   Formats");
         println!("------- ---------------------------------------- -----------------");
-        oxdz::player::list().iter().for_each(|p|
+        oxdz::player_list().iter().for_each(|p|
             println!("{:7} {:40} {}", p.id, p.name, p.accepts.join(", "))
         );
         return;

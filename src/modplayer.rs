@@ -122,7 +122,7 @@ fn load_module<'a>(name_list: &Vec<String>, index: usize, rate: u32, player_id: 
     let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
     // Load the module and optionally set the player we want
-    let mut oxdz = oxdz::Oxdz::new(&mmap[..], rate, &player_id)?;
+    let oxdz = oxdz::Oxdz::new(&mmap[..], rate, &player_id)?;
 
     let mut mi = oxdz::ModuleInfo::new();
     oxdz.module_info(&mut mi);
