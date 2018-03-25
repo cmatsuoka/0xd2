@@ -153,15 +153,15 @@ impl<'a> ModPlayer<'a> {
             player_id: player_id.to_owned(),
             load_next: false,
             name_list,
-            index: 1,
+            index: 0,
         })
     }
 
     pub fn load(&mut self) -> Result<(), Box<Error>> {
         println!();
+        self.index += 1;
         self.oxdz = load_module(self.name_list, self.index, self.rate, &self.player_id)?;
         self.load_next = false;
-        self.index += 1;
         Ok(())
     }
 
@@ -279,7 +279,7 @@ fn run(matches: &Matches) -> Result<(), Box<Error>> {
                             println!();
                             match mod_player.load() {
                                 Ok(_)  => {},
-                                Err(e) => println!("error: {}", e),
+                                Err(e) => print!("error: {}", e),
                             }
                         }
                     }
