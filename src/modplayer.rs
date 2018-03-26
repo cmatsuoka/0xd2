@@ -1,6 +1,6 @@
 use std::error::Error;
-use std::fs::File;
-use std::io::{stdout, Write};
+use std::fs;
+use std::io::{self, stdout, Write};
 use std::process;
 use std::sync::mpsc;
 use memmap::Mmap;
@@ -126,7 +126,14 @@ fn load_module<'a>(name_list: &[String], index: usize, rate: u32, player_id: &st
     let name = &name_list[index];
 
     println!("Loading {}... ({}/{})", name, index + 1, name_list.len());
-    let file = File::open(name)?;
+
+    let md = fs::metadata(name)?;
+    if !md.is_file() {
+        return Err(Box::new(io::Error::new(io::ErrorKind::Other, "not a regular file")));
+    }
+
+    let file = fs::File::open(name)?;
+
     let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 
     // Load the module and optionally set the player we want
