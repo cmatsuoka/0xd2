@@ -3,6 +3,7 @@ extern crate oxdz;
 extern crate cpal;
 extern crate getopts;
 extern crate termios;
+extern crate rand;
 extern crate libc;
 
 use std::env;
@@ -49,6 +50,7 @@ fn main() {
     opts.optopt("M", "mute", "Mute channels or ranges of channels", "list");
     opts.optflag("P", "list-players", "List available players");
     opts.optopt("p", "player", "Use this player", "id");
+    opts.optflag("R", "random", "Randomize list of files before playing");
     opts.optopt("r", "rate", "Set the sampling rate in hertz", "freq");
     opts.optopt("S", "solo", "Solo channels or ranges of channels", "list");
     opts.optopt("s", "start", "Start from the specified order", "num");
@@ -149,7 +151,7 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
         let stack_size = 4_000_000;
 
         thread::Builder::new().stack_size(stack_size).spawn(move || {
-            let name_list = &matches.free;
+            let name_list = &mut matches.free.to_vec()[..];
 
             let mut mod_player = match modplayer::ModPlayer::new(name_list, rate, &player_id, rx, &matches) {
                 Ok(val) => val,

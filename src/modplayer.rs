@@ -6,6 +6,7 @@ use std::sync::mpsc;
 use memmap::Mmap;
 use getopts;
 use oxdz;
+use rand::{self, Rng};
 use command;
 
 pub struct ModPlayer<'a> {
@@ -18,12 +19,17 @@ pub struct ModPlayer<'a> {
     rate: u32,
     player_id: String,
     pub load_next: bool,
-    name_list: &'a Vec<String>,
+    name_list: &'a [String],
     index: usize,
 }
 
 impl<'a> ModPlayer<'a> {
-    pub fn new(name_list: &'a Vec<String>, rate: u32, player_id: &str, rx: mpsc::Receiver<command::Key>, matches: &getopts::Matches) -> Result<Self, Box<Error>> {
+    pub fn new(name_list: &'a mut [String], rate: u32, player_id: &str, rx: mpsc::Receiver<command::Key>, matches: &getopts::Matches) -> Result<Self, Box<Error>> {
+
+        // Randomize list of files
+        if matches.opt_present("R") {
+            rand::thread_rng().shuffle(name_list);
+        }
 
         let mut oxdz = load_module(name_list, 0, rate, player_id)?;
 
@@ -113,7 +119,7 @@ impl<'a> ModPlayer<'a> {
     }
 }
 
-fn load_module<'a>(name_list: &Vec<String>, index: usize, rate: u32, player_id: &str) -> Result<oxdz::Oxdz<'a>, Box<Error>> {
+fn load_module<'a>(name_list: &[String], index: usize, rate: u32, player_id: &str) -> Result<oxdz::Oxdz<'a>, Box<Error>> {
     if index >= name_list.len() {
         process::exit(0);  // no more modules to play
     }
