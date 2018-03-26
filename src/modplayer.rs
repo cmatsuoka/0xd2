@@ -96,8 +96,10 @@ impl<'a> ModPlayer<'a> {
                 Ok(cmd) => match cmd {
                     command::Key::Pause    => { self.pause = !self.pause },
                     command::Key::Exit     => { println!(); process::exit(0) },
-                    command::Key::Forward  => { self.oxdz.set_position(self.fi.pos + 1); },
-                    command::Key::Backward => { self.oxdz.set_position(if self.fi.pos > 0 { self.fi.pos - 1 } else { 0 }); },
+                    command::Key::Forward  => { self.oxdz.set_position(self.fi.pos + 1); self.pause = false; },
+                    command::Key::Backward => { self.oxdz.set_position(if self.fi.pos > 0 { self.fi.pos - 1 } else { 0 }); self.pause = false; },
+                    command::Key::Next     => { self.load_next = true; self.pause = false },
+                    command::Key::Previous => { self.pause = false },
                 },
                 Err(_)  => (),
             }
@@ -117,7 +119,7 @@ fn load_module<'a>(name_list: &Vec<String>, index: usize, rate: u32, player_id: 
     }
     let name = &name_list[index];
 
-    println!("Loading {}...", name);
+    println!("Loading {}... ({}/{})", name, index + 1, name_list.len());
     let file = File::open(name)?;
     let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
 

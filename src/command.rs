@@ -5,6 +5,8 @@ pub enum Key {
     Exit,
     Forward,
     Backward,
+    Next,
+    Previous,
 }
 
 pub struct Command;
@@ -19,6 +21,10 @@ impl Command {
         match c {
             ' '    => return Some(Key::Pause),
             'q'    => return Some(Key::Exit),
+            'f'    => return Some(Key::Forward),
+            'b'    => return Some(Key::Backward),
+            'n'    => return Some(Key::Next),
+            'p'    => return Some(Key::Previous),
             '\x1b' => {
                 match terminal::read_key() {
                     Some(c) => if c == '[' {
@@ -26,6 +32,8 @@ impl Command {
                             Some(c) => match c {
                                 'C' => return Some(Key::Forward),
                                 'D' => return Some(Key::Backward),
+                                'A' => return Some(Key::Next),
+                                'B' => return Some(Key::Previous),
                                 _   => (),
                             }
                             None    => (),
