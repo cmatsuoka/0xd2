@@ -65,7 +65,7 @@ fn main() {
 
     if matches.opt_present("L") {
         oxdz::format_list().iter().enumerate().for_each(|(i,f)|
-            println!("{}:{}", i+1, f.name())
+            println!("{}:{}", i+1, f.name)
         );
         return;
     }
