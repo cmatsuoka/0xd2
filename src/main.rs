@@ -167,9 +167,10 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
                 match data {
                     cpal::StreamData::Output{buffer: cpal::UnknownTypeOutputBuffer::I16(mut buffer)} => {
                         mod_player.fill_buffer(&mut buffer);
-                        while mod_player.load_next {
+                        if mod_player.load_next {
                             println!();
                             mod_player.load();
+                            mod_player.load_next = false;
                         }
                     }
 
