@@ -128,9 +128,8 @@ fn load_module<'a>(name_list: &[String], index: &mut usize, rate: u32, player_id
             process::exit(0);  // no more modules to play
         }
         let name = &name_list[*index];
-        *index += 1;
-
         println!("Loading {}... ({}/{})", name, *index + 1, name_list.len());
+        *index += 1;
 
         let md = match fs::metadata(name) {
             Ok(val) => val,
