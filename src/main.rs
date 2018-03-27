@@ -156,7 +156,7 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
             let mut mod_player = match modplayer::ModPlayer::new(name_list, rate, &player_id, rx, &matches) {
                 Ok(val) => val,
                 Err(e)  => {
-                    eprintln!("Error: {}", e);
+                    println!("Error: {}", e);
                     process::exit(1);
                 },
             };
@@ -169,10 +169,7 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
                         mod_player.fill_buffer(&mut buffer);
                         while mod_player.load_next {
                             println!();
-                            match mod_player.load() {
-                                Ok(_)  => {},
-                                Err(e) => print!("error: {}", e),
-                            }
+                            mod_player.load();
                         }
                     }
 

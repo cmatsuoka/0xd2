@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fs;
-use std::io::{self, stdout, Write};
+use std::io::{stdout, Write};
 use std::process;
 use std::sync::mpsc;
 use memmap::Mmap;
@@ -31,7 +31,8 @@ impl<'a> ModPlayer<'a> {
             rand::thread_rng().shuffle(name_list);
         }
 
-        let mut oxdz = load_module(name_list, 0, rate, player_id)?;
+        let mut index = 0;
+        let mut oxdz = load_module(name_list, &mut index, rate, player_id);
 
         // Mute channels
         match matches.opt_str("M") {
@@ -61,16 +62,13 @@ impl<'a> ModPlayer<'a> {
             player_id: player_id.to_owned(),
             load_next: false,
             name_list,
-            index: 0,
+            index,
         })
     }
 
-    pub fn load(&mut self) -> Result<(), Box<Error>> {
+    pub fn load(&mut self) {
         println!();
-        self.index += 1;
-        self.oxdz = load_module(self.name_list, self.index, self.rate, &self.player_id)?;
-        self.load_next = false;
-        Ok(())
+        self.oxdz = load_module(self.name_list, &mut self.index, self.rate, &self.player_id);
     }
 
     pub fn set_position(&mut self, pos: usize) {
@@ -119,37 +117,64 @@ impl<'a> ModPlayer<'a> {
     }
 }
 
-fn load_module<'a>(name_list: &[String], index: usize, rate: u32, player_id: &str) -> Result<oxdz::Oxdz<'a>, Box<Error>> {
-    if index >= name_list.len() {
-        process::exit(0);  // no more modules to play
+fn load_module<'a>(name_list: &[String], index: &mut usize, rate: u32, player_id: &str) -> oxdz::Oxdz<'a> {
+
+    let mut oxdz: oxdz::Oxdz;
+    let player_name: &'static str;
+
+    // try until we load a file
+    loop {
+        if *index >= name_list.len() {
+            process::exit(0);  // no more modules to play
+        }
+        let name = &name_list[*index];
+        *index += 1;
+
+        println!("Loading {}... ({}/{})", name, *index + 1, name_list.len());
+
+        let md = match fs::metadata(name) {
+            Ok(val) => val,
+            Err(e)  => { println!("Error: {}\n", e); continue; }
+        };
+
+        if !md.is_file() {
+            println!("Error: not a regular file");
+            continue;
+        }
+
+        let file = match fs::File::open(name) {
+            Ok(val) => val,
+            Err(e)  => { println!("Error: {}\n", e); continue; }
+        };
+
+        let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
+
+        // Load the module and optionally set the player we want
+        oxdz = match oxdz::Oxdz::new(&mmap[..], rate, &player_id) {
+            Ok(val) => val,
+            Err(e)  => { println!("Error: {}\n", e); continue; }
+        };
+
+        player_name = match oxdz.player_info() {
+            Ok(val) => val.name,
+            Err(e)  => { println!("Error: {}\n", e); continue; }
+        };
+
+        break;
     }
-    let name = &name_list[index];
-
-    println!("Loading {}... ({}/{})", name, index + 1, name_list.len());
-
-    let md = fs::metadata(name)?;
-    if !md.is_file() {
-        return Err(Box::new(io::Error::new(io::ErrorKind::Other, "not a regular file")));
-    }
-
-    let file = fs::File::open(name)?;
-
-    let mmap = unsafe { Mmap::map(&file).expect("failed to map the file") };
-
-    // Load the module and optionally set the player we want
-    let oxdz = oxdz::Oxdz::new(&mmap[..], rate, &player_id)?;
 
     let mut mi = oxdz::ModuleInfo::new();
     oxdz.module_info(&mut mi);
+
     println!("Format  : {}", mi.description);
     println!("Creator : {}", mi.creator);
     println!("Channels: {}", mi.channels);
     println!("Title   : {}", mi.title);
-    println!("Player  : {}", oxdz.player_info()?.name);
+    println!("Player  : {}", player_name);
 
     println!("Duration: {}min{:02}s", (mi.total_time + 500) / 60000,
                                      ((mi.total_time + 500) / 1000) % 60);
-    Ok(oxdz)
+    oxdz
 }
 
 fn show_info(fi: &oxdz::FrameInfo, time: f32, module: &oxdz::Module, paused: bool) {
