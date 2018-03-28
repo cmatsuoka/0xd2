@@ -25,6 +25,8 @@ impl Command {
             'b'    => return Some(Key::Backward),
             'n'    => return Some(Key::Next),
             'p'    => return Some(Key::Previous),
+
+            #[cfg(unix)]
             '\x1b' => {
                 match terminal::read_key() {
                     Some(c) => if c == '[' {

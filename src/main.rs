@@ -2,17 +2,29 @@ extern crate memmap;
 extern crate oxdz;
 extern crate cpal;
 extern crate getopts;
-#[cfg(unix)] extern crate termios;
 extern crate rand;
 extern crate libc;
+
+#[cfg(unix)] extern crate termios;
+
+#[cfg(windows)] extern crate kernel32;
+#[cfg(windows)] extern crate winapi;
+#[cfg(windows)] extern crate isatty;
 
 use std::env;
 use std::error::Error;
 use std::process;
 use std::thread;
 use std::sync::mpsc;
+#[cfg(unix)]
+use terminal_unix as terminal;
+#[cfg(windows)]
+use terminal_windows as terminal;
 
-mod terminal;
+#[cfg(unix)]
+mod terminal_unix;
+#[cfg(windows)]
+mod terminal_windows;
 mod command;
 mod modplayer;
 
