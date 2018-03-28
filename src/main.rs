@@ -2,7 +2,7 @@ extern crate memmap;
 extern crate oxdz;
 extern crate cpal;
 extern crate getopts;
-extern crate termios;
+#[cfg(unix)] extern crate termios;
 extern crate rand;
 extern crate libc;
 

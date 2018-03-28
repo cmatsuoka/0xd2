@@ -1,14 +1,16 @@
 use std::error::Error;
-use termios::*;
+#[cfg(unix)] use termios::*;
 use libc;
 
 pub struct Terminal {
+    #[cfg(unix)]
     term: Termios,
 }
 
 impl Terminal {
     pub fn new() -> Result<Self, Box<Error>> {
         Ok(Terminal{
+            #[cfg(unix)]
             term: Termios::from_fd(0)?,
         })
     }
