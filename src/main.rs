@@ -199,7 +199,7 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
 
     loop {
         {
-            let cmd = match tty.read_key() {
+            let cmd = match terminal::read_key() {
                 Some(c) => cmd.process(c),
                 None    => None,
             };
