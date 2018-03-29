@@ -24,4 +24,3 @@ termios = "0.3"
 [target.'cfg(windows)'.dependencies]
 kernel32-sys = "0.2"
 winapi = "0.2"
-isatty = "0.1"

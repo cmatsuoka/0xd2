@@ -9,7 +9,6 @@ extern crate libc;
 
 #[cfg(windows)] extern crate kernel32;
 #[cfg(windows)] extern crate winapi;
-#[cfg(windows)] extern crate isatty;
 
 use std::env;
 use std::error::Error;
@@ -200,7 +199,7 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
 
     loop {
         {
-            let cmd = match terminal::read_key() {
+            let cmd = match tty.read_key() {
                 Some(c) => cmd.process(c),
                 None    => None,
             };
