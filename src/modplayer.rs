@@ -137,7 +137,7 @@ fn load_module<'a>(name_list: &[String], index: &mut usize, rate: u32, player_id
         };
 
         if !md.is_file() {
-            println!("Error: not a regular file");
+            println!("Error: not a regular file\n");
             continue;
         }
 
