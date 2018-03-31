@@ -155,13 +155,7 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
     {
         let matches = matches.clone();
 
-        #[cfg(debug_assertions)]
-        let stack_size = 8_000_000;
-
-        #[cfg(not(debug_assertions))]
-        let stack_size = 4_000_000;
-
-        thread::Builder::new().stack_size(stack_size).spawn(move || {
+        thread::spawn(move || {
             let name_list = &mut matches.free.to_vec()[..];
 
             let mut mod_player = match modplayer::ModPlayer::new(name_list, rate, &player_id, rx, &matches) {
@@ -188,7 +182,7 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
                     _ => { }
                 }
             });
-        }).unwrap();
+        });
     }
 
     let tty = terminal::Terminal::new()?;
