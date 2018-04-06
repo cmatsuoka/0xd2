@@ -74,6 +74,7 @@ fn main() {
         }
     };
 
+    // List supported formats and exit
     if matches.opt_present("L") {
         oxdz::format_list().iter().enumerate().for_each(|(i,f)|
             println!("{}:{}", i+1, f.name)
@@ -81,6 +82,7 @@ fn main() {
         return;
     }
 
+    // List players and exit
     if matches.opt_present("P") {
         println!("ID      Player                                   Formats");
         println!("------- ---------------------------------------- -----------------");
@@ -90,6 +92,7 @@ fn main() {
         return;
     }
 
+    // Show options and exit
     if matches.opt_present("h") ||  matches.free.len() < 1 {
         let brief = format!("Usage: {} [options] filename", args[0]);
         print!("{}", opts.usage(&brief));
@@ -150,11 +153,13 @@ fn run(matches: &getopts::Matches) -> Result<(), Box<Error>> {
     let stream_id = event_loop.build_output_stream(&device, &format)?;
     event_loop.play_stream(stream_id);
 
+    // Channel to send commands to the player thread
     let (tx, rx) = mpsc::channel();
 
     {
         let matches = matches.clone();
 
+        // Run player in a separate thread
         thread::spawn(move || {
             let name_list = &mut matches.free.to_vec()[..];
 
