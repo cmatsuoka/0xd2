@@ -146,17 +146,19 @@ fn load_module<'a>(name_list: &[String], index: &mut usize, rate: u32, player_id
             Err(e)  => { println!("Error: {}\n", e); continue; }
         };
 
-        let mmap = unsafe {
-            match Mmap::map(&file) {
+        oxdz = {
+            let mmap = unsafe {
+                match Mmap::map(&file) {
+                    Ok(val) => val,
+                    Err(e)  => { println!("Error: {}\n", e); continue; }
+                }
+            };
+
+            // Load the module and optionally set the player we want
+            match oxdz::Oxdz::new(&mmap[..], rate, &player_id) {
                 Ok(val) => val,
                 Err(e)  => { println!("Error: {}\n", e); continue; }
             }
-        };
-
-        // Load the module and optionally set the player we want
-        oxdz = match oxdz::Oxdz::new(&mmap[..], rate, &player_id) {
-            Ok(val) => val,
-            Err(e)  => { println!("Error: {}\n", e); continue; }
         };
 
         player_name = match oxdz.player_info() {
